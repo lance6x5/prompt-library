@@ -1,8 +1,9 @@
 /**
  * View + tag filtering. `view` is one of:
- *   { type: 'all' } | { type: 'favorites' } | { type: 'recent' } | { type: 'category', name }
+ *   { type: 'all' } | { type: 'favorites' } | { type: 'recent' } | { type: 'examples' } | { type: 'category', name }
  */
 export const RECENT_LIMIT = 20;
+export const EXAMPLE_TAG = 'example';
 
 export function filterByTags(prompts, tags = [], mode = 'and') {
   if (!tags.length) return prompts;
@@ -21,6 +22,8 @@ export function filterByView(prompts, view = { type: 'all' }) {
         .filter((p) => p.lastUsedAt)
         .sort((a, b) => b.lastUsedAt - a.lastUsedAt)
         .slice(0, RECENT_LIMIT);
+    case 'examples':
+      return prompts.filter((p) => (p.tags || []).includes(EXAMPLE_TAG));
     case 'category':
       return prompts.filter((p) => (p.category || '') === (view.name || ''));
     default:

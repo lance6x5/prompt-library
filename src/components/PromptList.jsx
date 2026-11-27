@@ -5,6 +5,7 @@ const TITLES = {
   all: 'All prompts',
   favorites: 'Favorites',
   recent: 'Recently used',
+  examples: 'Browse examples',
 };
 
 function snippet(body) {
@@ -94,13 +95,24 @@ export default function PromptList({
         <kbd>↓</kbd> select · <kbd>Enter</kbd> copy · <kbd>n</kbd> new
       </p>
 
+      {view.type === 'examples' && (
+        <p className="small muted">
+          Ready-made prompts to copy, run or adapt — tagged <span className="tag">#example</span>. Many come from the
+          public-domain awesome-chatgpt-prompts collection (CC0 1.0); edit them freely.{' '}
+          <button type="button" className="link-btn" onClick={onAddExamples}>
+            Add any missing examples
+          </button>
+        </p>
+      )}
       {prompts.length === 0 ? (
         <p className="muted">
           {view.type === 'recent'
             ? 'Nothing used yet. Copy or run a prompt and it will show up here.'
             : view.type === 'favorites'
               ? 'No favorites yet. Star a prompt to pin it here.'
-              : 'No prompts match.'}
+              : view.type === 'examples' && !filtered
+                ? 'No example prompts in your library.'
+                : 'No prompts match.'}
         </p>
       ) : (
         <ul className="prompt-list" ref={listRef} aria-describedby="list-hint">

@@ -1,3 +1,5 @@
+import { filterByView } from '../lib/filter.js';
+
 /** Navigation: views, categories, tag filters (AND/OR) and utility pages. */
 export default function Sidebar({
   open,
@@ -16,6 +18,7 @@ export default function Sidebar({
   const cur = (cond) => (cond ? 'page' : undefined);
   const favCount = prompts.filter((p) => p.favorite).length;
   const recentCount = prompts.filter((p) => p.lastUsedAt).length;
+  const exampleCount = filterByView(prompts, { type: 'examples' }).length;
 
   return (
     <nav id="sidebar" className={`sidebar${open ? ' open' : ''}`} aria-label="Library">
@@ -33,6 +36,11 @@ export default function Sidebar({
         <li>
           <a href="#/recent" aria-current={cur(isList && v.type === 'recent')}>
             Recently used <span className="count">{recentCount}</span>
+          </a>
+        </li>
+        <li>
+          <a href="#/examples" aria-current={cur(isList && v.type === 'examples')}>
+            Browse examples <span className="count">{exampleCount}</span>
           </a>
         </li>
       </ul>
@@ -114,7 +122,7 @@ export default function Sidebar({
         </li>
         <li>
           <a href="#/settings" aria-current={cur(route.name === 'settings')}>
-            Settings &amp; AI key
+            Settings &amp; AI keys
           </a>
         </li>
         <li>

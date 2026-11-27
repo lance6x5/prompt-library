@@ -121,3 +121,23 @@ export function markSeeded(value = true) {
     /* ignore */
   }
 }
+
+const SEED_VERSION_KEY = 'promptvault.seedVersion';
+
+/** Seed set version this browser has seen (null if never recorded - v1.x). */
+export function getSeedVersion() {
+  try {
+    const v = localStorage.getItem(SEED_VERSION_KEY);
+    return v === null ? null : Number(v);
+  } catch {
+    return null;
+  }
+}
+
+export function setSeedVersion(version) {
+  try {
+    localStorage.setItem(SEED_VERSION_KEY, String(version));
+  } catch {
+    /* ignore */
+  }
+}

@@ -2,20 +2,20 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { readFileSync } from 'node:fs';
+import { CONNECT_SRC } from './src/lib/csp.js';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 // Content Security Policy, injected only into the production build (the Vite dev
 // server relies on inline scripts for HMR, which this policy would block).
-// connect-src allows the Anthropic API for the optional "Run with AI" feature
-// and the Abacus counter for the anonymous visit count (src/lib/visits.js).
+// connect-src: see src/lib/csp.js (AI providers, local Ollama, visit counter; no wildcards).
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self'",
-  "connect-src 'self' https://api.anthropic.com https://abacus.jasoncameron.dev",
+  `connect-src ${CONNECT_SRC.join(' ')}`,
   "manifest-src 'self'",
   "worker-src 'self'",
   "object-src 'none'",
@@ -65,8 +65,9 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,webmanifest}'],
         navigateFallback: 'index.html',
-        // No runtimeCaching: cross-origin requests (Anthropic API, Abacus visit
-        // counter) are never cached or intercepted by the service worker.
+        // No runtimeCaching: cross-origin requests (AI provider APIs, local
+        // Ollama, Abacus visit counter) are never cached or intercepted by the
+        // service worker.
       },
     }),
   ],

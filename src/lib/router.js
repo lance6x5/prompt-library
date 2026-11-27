@@ -3,6 +3,7 @@
  *   #/                 all prompts
  *   #/favorites        favorites
  *   #/recent           recently used
+ *   #/examples         example prompts (tagged "example")
  *   #/category/<name>  category
  *   #/prompt/<id>      prompt detail
  *   #/edit/<id>        edit prompt
@@ -23,6 +24,8 @@ export function parseHash(hash = '') {
       return { name: 'list', view: { type: 'favorites' } };
     case 'recent':
       return { name: 'list', view: { type: 'recent' } };
+    case 'examples':
+      return { name: 'list', view: { type: 'examples' } };
     case 'category':
       return { name: 'list', view: { type: 'category', name: arg } };
     case 'prompt':

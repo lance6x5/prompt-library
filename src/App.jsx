@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as db from './lib/db.js';
-import { seedPrompts } from './lib/seed.js';
+import { examplesToAdd, planSeeds, SEED_VERSION } from './lib/seed.js';
 import { createKeyStore } from './lib/keyStore.js';
 import { loadSettings, saveSettings, clearSettings } from './lib/settings.js';
 import { filterByTags, filterByView, sortPrompts, categories as getCategories } from './lib/filter.js';
@@ -41,6 +41,7 @@ export default function App() {
   const [toast, setToast] = useState('');
   const [navOpen, setNavOpen] = useState(false);
   const [visits, setVisits] = useState(null);
+  const [seedOffer, setSeedOffer] = useState(null); // { count, since } when new examples are offered
   const [keyStore] = useState(() => createKeyStore());
   const [, setKeyVersion] = useState(0);
   const searchRef = useRef(null);
@@ -54,8 +55,9 @@ export default function App() {
     let alive = true;
     (async () => {
       let list = await db.getAll();
-      if (!list.length && !db.wasSeeded()) {
-        list = seedPrompts();
+      const plan = planSeeds({ existing: list, storedVersion: db.getSeedVersion(), seeded: db.wasSeeded() });
+      if (plan.action === 'seed-all') {
+        list = plan.prompts;
         try {
           await db.putMany(list);
         } catch {
@@ -63,8 +65,10 @@ export default function App() {
         }
         db.markSeeded();
       }
+      if (plan.version !== null) db.setSeedVersion(plan.version);
       if (alive) {
         setPrompts(byUpdated(list.map((p) => createPrompt(p))));
+        if (plan.action === 'offer') setSeedOffer({ count: plan.prompts.length, since: plan.since });
         setLoaded(true);
       }
     })();
@@ -190,7 +194,7 @@ export default function App() {
     setConfirmState({
       title: 'Reset all data?',
       message:
-        'This permanently deletes every prompt, all settings and any remembered API key from this browser. Export first if you want a backup.',
+        'This permanently deletes every prompt, all settings and any remembered API keys from this browser. Export first if you want a backup.',
       confirmLabel: 'Reset everything',
       danger: true,
       requireText: 'RESET',
@@ -201,9 +205,11 @@ export default function App() {
           notify(err.message);
         }
         clearSettings();
-        keyStore.forget();
+        keyStore.forgetAll();
         setKeyVersion((v) => v + 1);
         db.markSeeded(true);
+        db.setSeedVersion(SEED_VERSION);
+        setSeedOffer(null);
         setPrompts([]);
         setSettingsState(loadSettings());
         setSelectedTags([]);
@@ -214,10 +220,29 @@ export default function App() {
     });
   }, [keyStore, notify]);
 
+  /** Add every example prompt that is not already in the library (title + body match = skip). */
   const addExamples = useCallback(() => {
-    persist(seedPrompts());
-    notify('Added 5 example prompts');
-  }, [persist, notify]);
+    const fresh = examplesToAdd(prompts, 0);
+    persist(fresh);
+    db.setSeedVersion(SEED_VERSION);
+    setSeedOffer(null);
+    notify(fresh.length ? `Added ${fresh.length} example prompt${fresh.length === 1 ? '' : 's'}` : 'All example prompts are already in your library');
+  }, [prompts, persist, notify]);
+
+  /** Answer the "new example prompts" banner (existing users only). */
+  const answerSeedOffer = useCallback(
+    (accept) => {
+      if (accept) {
+        // Only seed sets newer than the user's; duplicates of anything already present are skipped.
+        const fresh = examplesToAdd(prompts, seedOffer?.since ?? 1);
+        persist(fresh);
+        notify(`Added ${fresh.length} example prompt${fresh.length === 1 ? '' : 's'}`);
+      }
+      db.setSeedVersion(SEED_VERSION);
+      setSeedOffer(null);
+    },
+    [prompts, persist, notify, seedOffer]
+  );
 
   // ---- Derived list for list views ----
   const index = useMemo(() => createIndex(prompts), [prompts]);
@@ -450,6 +475,24 @@ export default function App() {
           onTagMode={(tagMode) => updateSettings({ tagMode })}
         />
         <main id="main" ref={mainRef} tabIndex={-1}>
+          {loaded && seedOffer?.count > 0 && (
+            <div className="seed-banner" role="region" aria-label="New example prompts">
+              <p>
+                <strong>
+                  {seedOffer.count} new example prompt{seedOffer.count === 1 ? ' is' : 's are'} available
+                </strong>{' '}
+                — writing, coding, career, learning and more. Your existing prompts are not changed.
+              </p>
+              <div className="actions start">
+                <button type="button" className="btn primary small" onClick={() => answerSeedOffer(true)}>
+                  Add them
+                </button>
+                <button type="button" className="btn small" onClick={() => answerSeedOffer(false)}>
+                  No thanks
+                </button>
+              </div>
+            </div>
+          )}
           {content}
         </main>
       </div>
@@ -485,7 +528,7 @@ export default function App() {
           startRun={useTarget.run}
           settings={settings}
           onSettingsChange={updateSettings}
-          apiKey={keyStore.get()}
+          keyStore={keyStore}
           onUsed={recordUse}
           notify={notify}
           onClose={() => setUseTarget(null)}

@@ -832,6 +832,46 @@ legend {
 .key-form {
   margin-top: 1rem;
 }
+.key-slots {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.key-slot {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+.key-slot summary {
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+.key-slot[open] summary {
+  margin-bottom: 0.5rem;
+}
+.key-slot .key-form {
+  margin-top: 0.5rem;
+}
+
+/* ---------- New-examples banner (non-blocking) ---------- */
+.seed-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  background: var(--brand-soft);
+  border-left: 4px solid var(--brand);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin: 0 0 1rem;
+}
+.seed-banner p {
+  margin: 0;
+}
+.seed-banner .actions {
+  margin: 0;
+}
 
 /* ---------- Modal ---------- */
 .modal {

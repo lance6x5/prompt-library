@@ -55,7 +55,8 @@ export default function AboutPage({ version }) {
       <h2>Privacy</h2>
       <p>
         No accounts, no server; your prompts are stored only in this browser. The optional “Run with AI” feature sends the prompt
-        you run directly from your browser to the Anthropic API using your own key. The only other outside request is an
+        you run directly from your browser to the AI provider you choose (Anthropic, OpenAI, Google Gemini, OpenRouter, or a
+        local Ollama server), using your own key — each key is sent only to its own provider. The only other outside request is an
         anonymous visit count (one per browser session, via the open-source Abacus counter) that carries no prompts, key
         or other data; Do Not Track and Global Privacy Control are respected.
       </p>

@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { buildExport, parseImport, analyzeImport, resolveImport, EXPORT_FORMAT, SCHEMA_VERSION } from './schema.js';
 import { createPrompt } from './prompt.js';
 import { buildIssueUrl, ISSUES_URL } from './feedback.js';
-import { createKeyStore, maskKey, KEY_STORAGE } from './keyStore.js';
+import { createKeyStore, maskKey, KEY_STORAGE, storageKeyFor } from './keyStore.js';
+import { migrateSettings, effectiveModel, selectedModel } from './settings.js';
 
 describe('export / import schema', () => {
   const existing = [createPrompt({ id: 'a', title: 'Alpha', body: 'one' }), createPrompt({ id: 'b', title: 'Beta', body: 'two' })];
@@ -89,28 +90,78 @@ describe('key store', () => {
     };
   };
   const SAMPLE = 'test-key-not-real-1234';
+  const OTHER = 'test-key-not-real-5678';
 
-  it('keeps the key in memory by default', () => {
+  it('keeps keys in memory by default', () => {
     const s = fakeStorage();
     const ks = createKeyStore(s);
-    ks.set(SAMPLE);
-    expect(ks.get()).toBe(SAMPLE);
-    expect(s._m.has(KEY_STORAGE)).toBe(false);
-    expect(createKeyStore(s).get()).toBe('');
+    ks.set('anthropic', SAMPLE);
+    expect(ks.get('anthropic')).toBe(SAMPLE);
+    expect(s._m.size).toBe(0);
+    expect(createKeyStore(s).get('anthropic')).toBe('');
   });
-  it('persists only when remembered, and forgets', () => {
+  it('persists only when remembered, per provider, and forgets', () => {
     const s = fakeStorage();
     const ks = createKeyStore(s);
-    ks.set(SAMPLE, true);
-    expect(createKeyStore(s).get()).toBe(SAMPLE);
-    ks.setRemember(false);
+    ks.set('anthropic', SAMPLE, true);
+    ks.set('openai', OTHER);
+    expect(s._m.get(KEY_STORAGE)).toBe(SAMPLE); // same storage key as v1.x
+    expect(createKeyStore(s).get('anthropic')).toBe(SAMPLE);
+    expect(createKeyStore(s).get('openai')).toBe('');
+    ks.setRemember('openai', true);
+    expect(s._m.get(storageKeyFor('openai'))).toBe(OTHER);
+    expect(ks.isRemembered('openai')).toBe(true);
+    ks.setRemember('anthropic', false);
     expect(s._m.has(KEY_STORAGE)).toBe(false);
-    expect(ks.get()).toBe(SAMPLE);
-    ks.forget();
-    expect(ks.get()).toBe('');
+    expect(ks.get('anthropic')).toBe(SAMPLE);
+    ks.forget('anthropic');
+    expect(ks.get('anthropic')).toBe('');
+    expect(ks.get('openai')).toBe(OTHER);
+  });
+  it('keeps one slot per provider and forgets all', () => {
+    const s = fakeStorage();
+    const ks = createKeyStore(s);
+    ks.set('gemini', SAMPLE, true);
+    ks.set('openrouter', OTHER, true);
+    expect(ks.get('gemini')).toBe(SAMPLE);
+    expect(ks.get('openrouter')).toBe(OTHER);
+    expect(ks.ids().sort()).toEqual(['gemini', 'openrouter']);
+    ks.forgetAll();
+    expect(ks.ids()).toEqual([]);
+    expect(s._m.size).toBe(0);
+  });
+  it('reads a key remembered by v1.x as the Anthropic key', () => {
+    const s = fakeStorage();
+    s.setItem('promptvault.anthropicKey', SAMPLE);
+    const ks = createKeyStore(s);
+    expect(ks.get('anthropic')).toBe(SAMPLE);
+    expect(ks.isRemembered('anthropic')).toBe(true);
   });
   it('masks all but the last 4 characters', () => {
     expect(maskKey(SAMPLE)).toBe('••••1234');
     expect(maskKey('')).toBe('');
+  });
+});
+
+describe('settings', () => {
+  it('migrates the v1.x single Anthropic model to per-provider settings', () => {
+    const s = migrateSettings({ theme: 'dark', model: 'custom', customModel: 'claude-x', maxTokens: 500 });
+    expect(s.provider).toBe('anthropic');
+    expect(s.models).toEqual({ anthropic: 'custom' });
+    expect(s.customModels).toEqual({ anthropic: 'claude-x' });
+    expect('model' in s).toBe(false);
+    expect(effectiveModel(s)).toBe('claude-x');
+    expect(s.theme).toBe('dark');
+  });
+  it('remembers the last provider + model and falls back to defaults', () => {
+    const s = migrateSettings({ provider: 'gemini', models: { gemini: 'gemini-4-argon' } });
+    expect(effectiveModel(s)).toBe('gemini-4-argon');
+    expect(effectiveModel(s, 'openai')).toBe('gpt-6.2-sol');
+    expect(selectedModel(s, 'ollama')).toBe('llama3.2');
+    expect(migrateSettings({ provider: 'bogus' }).provider).toBe('anthropic');
+    expect(effectiveModel(migrateSettings({ provider: 'openai', models: { openai: 'custom' }, customModels: { openai: '  ' } }))).toBe('gpt-6.2-sol');
+  });
+  it('never stores keys in settings', () => {
+    expect(Object.keys(migrateSettings(null)).some((k) => /key/i.test(k))).toBe(false);
   });
 });

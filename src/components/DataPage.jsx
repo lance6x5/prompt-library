@@ -199,7 +199,7 @@ export default function DataPage({ prompts, categories, allTags, version, onImpo
 
       <div className="panel danger-zone">
         <h2>Reset</h2>
-        <p className="small">Delete all prompts, settings and any remembered API key from this browser.</p>
+        <p className="small">Delete all prompts, settings and any remembered API keys from this browser.</p>
         <button type="button" className="btn danger" onClick={onReset}>
           Reset all data…
         </button>

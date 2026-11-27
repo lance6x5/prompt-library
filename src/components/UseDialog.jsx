@@ -5,7 +5,7 @@ import { extractVariables, fillTemplate, humanizeVariable } from '../lib/templat
 import { copyText } from '../lib/browser.js';
 
 /** "Use" flow: fill {{variables}}, then copy the result or run it with AI. */
-export default function UseDialog({ prompt, startRun, settings, onSettingsChange, apiKey, onUsed, notify, onClose }) {
+export default function UseDialog({ prompt, startRun, settings, onSettingsChange, keyStore, onUsed, notify, onClose }) {
   const uid = useId();
   const vars = useMemo(() => extractVariables(prompt.body), [prompt.body]);
   const [values, setValues] = useState(() => Object.fromEntries(vars.map((v) => [v, ''])));
@@ -91,7 +91,7 @@ export default function UseDialog({ prompt, startRun, settings, onSettingsChange
           text={filled}
           settings={settings}
           onSettingsChange={onSettingsChange}
-          apiKey={apiKey}
+          keyStore={keyStore}
           onRun={() => onUsed(prompt)}
           onGoToSettings={onClose}
           notify={notify}

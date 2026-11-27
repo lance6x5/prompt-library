@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-27
+
+### Added
+
+- **More AI providers** for "Run with AI", all bring-your-own-key and browser-direct: OpenAI, Google Gemini, OpenRouter (one key for Llama, Mistral, DeepSeek, Qwen and more) and Ollama for local models (no key; requires `OLLAMA_ORIGINS=https://lance6x5.github.io`), alongside Anthropic.
+- Provider abstraction in `src/lib/providers/` (one module per provider: request builder, SSE/NDJSON stream parser, model listing, error mapping).
+- Per-provider key slots: memory-only by default, opt-in "Remember on this device" per provider, masked display, "Forget key" per provider and "Forget all keys".
+- Model picker per provider: suggested models checked against each provider's docs, a "Refresh models" button that loads the models your key can use, and a custom model id. The last provider and model are remembered (keys are not, unless you opt in).
+- Clear per-provider errors for invalid key, rate limit, quota/billing, model not found, overloaded/5xx, network/CORS failure (with an `OLLAMA_ORIGINS` hint for Ollama) and user abort.
+- **57 new example prompts**: 42 curated from the public-domain [awesome-chatgpt-prompts](https://github.com/f/awesome-chatgpt-prompts) collection (CC0 1.0, credited in each prompt's notes and in `THIRD-PARTY-NOTICES.md`) and 15 original prompts that show off `{{variables}}` (meeting summary, tone rewrite, PR review, study plan, PRD outline, SQL explainer, bug triage and more), across Writing, Coding, Career, Learning, Productivity, Data & Analysis, Creative and Communication.
+- "Browse examples" view (`#/examples`) listing every prompt tagged `#example`, with an "Add any missing examples" action.
+- Versioned example set (seed version 2): existing users see a dismissible, non-blocking banner ("N new example prompts are available — Add them / No thanks"); adding skips anything with the same title and text, and never changes or deletes existing prompts.
+- `THIRD-PARTY-NOTICES.md`.
+
+### Changed
+
+- Content Security Policy `connect-src` now allows exactly `'self'`, `https://api.anthropic.com`, `https://api.openai.com`, `https://generativelanguage.googleapis.com`, `https://openrouter.ai`, `http://localhost:11434`, `http://127.0.0.1:11434` and `https://abacus.jasoncameron.dev`.
+- Settings page: provider picker with "Get a key" links for each provider and an Ollama setup note. The notice now reads "Your keys are stored only in your browser and sent only to the AI provider you choose."
+- Anthropic: added Claude Fable 5.2 to the suggested models; behaviour and the `anthropic-dangerous-direct-browser-access` header are unchanged. A key remembered by earlier versions keeps working.
+- Fresh installs and "Reset all data" → "Add example prompts" now get the full example set (about 60 prompts).
+- README Security section rewritten for multiple providers; README features list updated.
+
 ## [1.2.0] - 2026-11-27
 
 ### Added
@@ -45,6 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Production Content Security Policy limiting network access to the app and `api.anthropic.com`.
 - GitHub Actions workflow that tests, builds and deploys to GitHub Pages.
 
-[Unreleased]: https://github.com/lance6x5/prompt-library/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/lance6x5/prompt-library/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/lance6x5/prompt-library/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/lance6x5/prompt-library/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/lance6x5/prompt-library/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/lance6x5/prompt-library/releases/tag/v1.0.0

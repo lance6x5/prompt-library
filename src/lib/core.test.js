@@ -14,7 +14,7 @@ import {
 import { tagCounts, renameTag, mergeTags, deleteTag, addTag, changedPrompts } from './tags.js';
 import { filterByTags, filterByView, sortPrompts, categories } from './filter.js';
 import { parseHash, href } from './router.js';
-import { seedPrompts } from './seed.js';
+import { seedPrompts, seedPromptsSince, examplesToAdd, planSeeds, SEED_VERSION, SEED_COUNTS, SEED_DEFS, EXAMPLE_TAG } from './seed.js';
 
 describe('template variables', () => {
   it('extracts unique variables in order', () => {
@@ -163,10 +163,76 @@ describe('router', () => {
 });
 
 describe('seed', () => {
-  it('provides 5 example prompts with variables', () => {
+  it('provides versioned example prompts, all with variables and the example tag', () => {
     const s = seedPrompts(1e12);
-    expect(s).toHaveLength(5);
-    expect(new Set(s.map((p) => p.id)).size).toBe(5);
+    expect(SEED_VERSION).toBe(2);
+    expect(SEED_COUNTS.v1).toBe(5);
+    expect(SEED_COUNTS.imported).toBeGreaterThanOrEqual(35);
+    expect(SEED_COUNTS.original).toBeGreaterThanOrEqual(15);
+    expect(s).toHaveLength(SEED_COUNTS.v1 + SEED_COUNTS.imported + SEED_COUNTS.original);
+    expect(new Set(s.map((p) => p.id)).size).toBe(s.length);
+    expect(new Set(s.map((p) => p.title.toLowerCase())).size).toBe(s.length);
     expect(s.every((p) => extractVariables(p.body).length > 0)).toBe(true);
+    expect(s.every((p) => p.tags.includes(EXAMPLE_TAG) && p.category)).toBe(true);
+    expect(seedPromptsSince(1).every((p) => p.model === 'Any')).toBe(true);
+  });
+  it('credits imported prompts and uses only {{variable}} placeholders', () => {
+    const imported = SEED_DEFS.filter((d) => d.origin === 'imported');
+    expect(imported.every((d) => d.notes.startsWith('Source: awesome-chatgpt-prompts (CC0 1.0)'))).toBe(true);
+    expect(SEED_DEFS.filter((d) => d.origin === 'original').some((d) => /awesome-chatgpt/.test(d.notes))).toBe(false);
+    for (const d of SEED_DEFS) expect(d.body).not.toMatch(/\$\{|\[(?:Insert|INSERT|bookname|paste)/);
+  });
+  it('the v1 seeds keep their original titles (so upgrades de-duplicate them)', () => {
+    const v1 = seedPromptsSince(0).slice(0, 5).map((p) => p.title);
+    expect(v1).toEqual(['Summarize a document', 'Code review checklist', 'Explain like I am new to it', 'Polite follow-up email', 'Brainstorm product names']);
+  });
+});
+
+describe('seed upgrade', () => {
+  const v1Library = () => seedPrompts(1e12).slice(0, 5).map((p) => ({ ...p, tags: p.tags.filter((t) => t !== EXAMPLE_TAG) }));
+
+  it('fresh install gets every example', () => {
+    const plan = planSeeds({ existing: [], storedVersion: null, seeded: false, now: 1e12 });
+    expect(plan.action).toBe('seed-all');
+    expect(plan.prompts).toHaveLength(seedPrompts().length);
+    expect(plan.version).toBe(SEED_VERSION);
+  });
+  it('v1.x users are offered only the new prompts, never duplicates, and nothing is overwritten', () => {
+    const user = createPrompt({ title: 'My own', body: 'Mine {{x}}' });
+    const existing = [...v1Library(), user];
+    const plan = planSeeds({ existing, storedVersion: null, seeded: true, now: 2e12 });
+    expect(plan.action).toBe('offer');
+    expect(plan.version).toBe(null); // wait for the user's answer
+    expect(plan.since).toBe(1);
+    expect(plan.prompts).toHaveLength(SEED_COUNTS.imported + SEED_COUNTS.original);
+    const ids = new Set(existing.map((p) => p.id));
+    expect(plan.prompts.some((p) => ids.has(p.id))).toBe(false);
+    expect(plan.prompts.some((p) => p.title === 'Summarize a document')).toBe(false);
+  });
+  it('skips examples the user already has (same title + body)', () => {
+    const one = seedPromptsSince(1)[0];
+    const existing = [...v1Library(), createPrompt({ title: one.title.toUpperCase(), body: one.body })];
+    const plan = planSeeds({ existing, storedVersion: 1, seeded: true });
+    expect(plan.prompts).toHaveLength(SEED_COUNTS.imported + SEED_COUNTS.original - 1);
+    expect(plan.prompts.some((p) => p.title === one.title)).toBe(false);
+  });
+  it('respects dismissal / an up-to-date version', () => {
+    expect(planSeeds({ existing: v1Library(), storedVersion: SEED_VERSION, seeded: true })).toEqual({ action: 'none', prompts: [], version: null });
+    // An emptied library after "Reset all data" is not re-seeded automatically.
+    expect(planSeeds({ existing: [], storedVersion: SEED_VERSION, seeded: true }).action).toBe('none');
+  });
+  it('records the version silently when every new example is already present', () => {
+    const plan = planSeeds({ existing: seedPrompts(), storedVersion: 1, seeded: true });
+    expect(plan).toEqual({ action: 'none', prompts: [], version: SEED_VERSION });
+  });
+  it('re-adding examples after a reset includes the full set, without duplicates', () => {
+    expect(examplesToAdd([], 0)).toHaveLength(seedPrompts().length);
+    const partial = seedPrompts().slice(0, 10);
+    expect(examplesToAdd(partial, 0)).toHaveLength(seedPrompts().length - 10);
+  });
+  it('the examples view lists tagged examples', () => {
+    const list = [...seedPrompts().slice(0, 3), createPrompt({ title: 'x', body: 'y' })];
+    expect(filterByView(list, { type: 'examples' })).toHaveLength(3);
+    expect(parseHash('#/examples')).toEqual({ name: 'list', view: { type: 'examples' } });
   });
 });

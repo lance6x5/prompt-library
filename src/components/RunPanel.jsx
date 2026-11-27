@@ -1,21 +1,27 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { streamMessage, clampMaxTokens } from '../lib/anthropic.js';
+import { clampMaxTokens, getProvider, KEY_NOTICE } from '../lib/providers/index.js';
 import { effectiveModel } from '../lib/settings.js';
 import { maskKey } from '../lib/keyStore.js';
 import { copyText } from '../lib/browser.js';
 import ModelFields from './ModelFields.jsx';
 
 /** Bring-your-own-key "Run with AI" panel with streaming output. */
-export default function RunPanel({ text, settings, onSettingsChange, apiKey, onRun, onGoToSettings, notify }) {
+export default function RunPanel({ text, settings, onSettingsChange, keyStore, onRun, onGoToSettings, notify }) {
   const uid = useId();
   const [output, setOutput] = useState('');
   const [status, setStatus] = useState('idle'); // idle | running | done | error
   const [error, setError] = useState(null);
   const [stopReason, setStopReason] = useState(null);
   const abortRef = useRef(null);
+  const provider = getProvider(settings.provider);
+  const key = provider.needsKey ? keyStore.get(provider.id) : '';
 
-  // Abort any in-flight request when the panel unmounts.
+  // Abort any in-flight request when the panel unmounts or the provider changes.
   useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => {
+    abortRef.current?.abort();
+    setError(null);
+  }, [provider.id]);
 
   const run = async () => {
     abortRef.current?.abort();
@@ -27,9 +33,9 @@ export default function RunPanel({ text, settings, onSettingsChange, apiKey, onR
     setStatus('running');
     onRun();
     try {
-      const res = await streamMessage({
-        apiKey,
-        model: effectiveModel(settings),
+      const res = await provider.stream({
+        key,
+        model: effectiveModel(settings, provider.id),
         maxTokens: clampMaxTokens(settings.maxTokens),
         prompt: text,
         signal: ctrl.signal,
@@ -48,52 +54,56 @@ export default function RunPanel({ text, settings, onSettingsChange, apiKey, onR
     }
   };
 
-  if (!apiKey) {
-    return (
-      <section className="run-panel" aria-labelledby={`${uid}-h`}>
-        <h3 id={`${uid}-h`}>Run with AI</h3>
-        <p>
-          To run prompts, add your own Anthropic API key in{' '}
-          <a href="#/settings" onClick={onGoToSettings}>
-            Settings
-          </a>
-          .
-        </p>
-        <p className="small muted">Your key is stored only in your browser and sent only to the AI provider.</p>
-      </section>
-    );
-  }
+  const missingKey = provider.needsKey && !key;
 
   return (
     <section className="run-panel" aria-labelledby={`${uid}-h`}>
       <h3 id={`${uid}-h`}>Run with AI</h3>
       <p className="small muted">
-        Using key {maskKey(apiKey)}. Your key is stored only in your browser and sent only to the AI provider.
+        {provider.needsKey && key ? `Using ${provider.shortLabel} key ${maskKey(key)}. ` : ''}
+        {provider.id === 'ollama' ? 'Runs on the Ollama server on this computer. ' : ''}
+        {KEY_NOTICE}
       </p>
-      <ModelFields settings={settings} onChange={onSettingsChange} compact />
-      <div className="actions start">
-        {status === 'running' ? (
-          <button type="button" className="btn danger" onClick={() => abortRef.current?.abort()}>
-            Stop
-          </button>
-        ) : (
-          <button type="button" className="btn primary" onClick={run} disabled={!text.trim()}>
-            {status === 'idle' ? 'Run' : 'Run again'}
-          </button>
-        )}
-        {output && status !== 'running' && (
-          <button
-            type="button"
-            className="btn"
-            onClick={async () => notify((await copyText(output)) ? 'Response copied' : 'Copy failed')}
-          >
-            Copy response
-          </button>
-        )}
-      </div>
+      <ModelFields
+        settings={settings}
+        onChange={onSettingsChange}
+        getKey={(id) => keyStore.get(id)}
+        notify={notify}
+        compact
+      />
+      {missingKey ? (
+        <p>
+          To run prompts with {provider.shortLabel}, add your own API key in{' '}
+          <a href="#/settings" onClick={onGoToSettings}>
+            Settings
+          </a>
+          .
+        </p>
+      ) : (
+        <div className="actions start">
+          {status === 'running' ? (
+            <button type="button" className="btn danger" onClick={() => abortRef.current?.abort()}>
+              Stop
+            </button>
+          ) : (
+            <button type="button" className="btn primary" onClick={run} disabled={!text.trim()}>
+              {status === 'idle' ? 'Run' : 'Run again'}
+            </button>
+          )}
+          {output && status !== 'running' && (
+            <button
+              type="button"
+              className="btn"
+              onClick={async () => notify((await copyText(output)) ? 'Response copied' : 'Copy failed')}
+            >
+              Copy response
+            </button>
+          )}
+        </div>
+      )}
 
       <p className="small" role="status">
-        {status === 'running' && 'Generating…'}
+        {status === 'running' && `Generating with ${provider.shortLabel}…`}
         {status === 'done' &&
           (stopReason === 'stopped'
             ? 'Stopped.'
@@ -104,7 +114,7 @@ export default function RunPanel({ text, settings, onSettingsChange, apiKey, onR
       {error && (
         <p className="error" role="alert">
           {error.message}
-          {error.kind === 'invalid_key' && (
+          {(error.kind === 'invalid_key' || error.kind === 'no_key') && (
             <>
               {' '}
               <a href="#/settings" onClick={onGoToSettings}>

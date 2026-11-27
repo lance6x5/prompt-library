@@ -12,7 +12,7 @@ A **Silverlight DevTech** project · © 2026 Silverlight DevTech. Source-availab
 
 More apps: [lance6x5.github.io](https://lance6x5.github.io/)
 
-Promptvault is a local-first prompt library: save, organize, tag, search and reuse AI prompts right in your browser, then export them as JSON. It runs 100% client-side on GitHub Pages — no accounts, no server, your prompts stay in your browser (the only outside request is an anonymous visit count, plus optional AI runs with your own key) — and works offline as an installable PWA.
+Promptvault is a local-first prompt library: save, organize, tag, search and reuse AI prompts right in your browser, then export them as JSON. It runs 100% client-side on GitHub Pages — no accounts, no server, your prompts stay in your browser (the only outside request is an anonymous visit count, plus optional AI runs with your own key, sent straight to the provider you choose) — and works offline as an installable PWA.
 
 Live app: https://lance6x5.github.io/prompt-library/
 
@@ -25,8 +25,9 @@ Live app: https://lance6x5.github.io/prompt-library/
 - **Keyboard shortcuts** — `/` focuses search, `n` creates a new prompt, `↑`/`↓` (or `j`/`k`) select, `Enter` copies the selected prompt.
 - **Editing** — Markdown-friendly editor with a preview toggle, version history (last 10 edits per prompt, restorable) and duplicate.
 - **Import / export** — export all or a filtered selection to JSON (documented schema version), import with duplicate detection (skip, overwrite or keep both), copy a single prompt as Markdown.
-- **Run with AI (optional)** — bring your own Anthropic API key and run a prompt directly from the browser with streamed output. See [Security](#security).
-- **Storage** — IndexedDB, seeded with 5 example prompts on first run. "Reset all data" with a confirmation step.
+- **Run with AI (optional)** — bring your own key for **Anthropic (Claude), OpenAI, Google Gemini or OpenRouter** (one key for Llama, Mistral, DeepSeek, Qwen and more), or use **Ollama** for local models with no key. Streamed output with a Stop button, per-provider key slots, suggested models plus "Refresh models" and custom model ids, and clear errors (invalid key, rate limit, quota, model not found, overloaded, network/CORS). See [Security](#security).
+- **Example library** — about 60 ready-made prompts across writing, coding, career, learning, productivity, data & analysis, creative and communication, many from the public-domain [awesome-chatgpt-prompts](https://github.com/f/awesome-chatgpt-prompts) collection (CC0 1.0). Find them under **Browse examples** (tag `#example`). Existing users are offered new examples once via a dismissible banner; nothing in your library is overwritten.
+- **Storage** — IndexedDB, seeded with the example library on first run (versioned, so upgrades only ever add new examples, skipping duplicates). "Reset all data" with a confirmation step.
 - **Quality** — responsive (375px and up), light/dark mode via `prefers-color-scheme` (plus a manual override), keyboard accessible with visible focus states.
 
 ## Local development
@@ -72,21 +73,59 @@ Timestamps are epoch milliseconds. A bare array of prompt objects is also accept
 
 ## Security
 
-"Run with AI" uses a **bring-your-own-key (BYOK)** model:
+"Run with AI" uses a **bring-your-own-key (BYOK)** model: requests go **directly from your browser** to the AI provider
+you choose. Promptvault has no server and never sees your keys or prompts.
 
-- You paste your own Anthropic API key in **Settings**. It is never part of this repository, never hard-coded, and is sent **only** to `https://api.anthropic.com`.
-- By default the key is kept **in memory only** and disappears when the tab closes. You can opt in to **"Remember on this device"**, which stores it in `localStorage` — anyone with access to that browser (or a malicious extension) could read it.
-- The key is masked in the UI (only the last 4 characters are shown, e.g. `••••abcd`), and **Forget key** removes it immediately.
-- Requests use the `anthropic-dangerous-direct-browser-access: true` header, which the API requires for direct browser (CORS) calls. It is "dangerous" because browser-side keys are exposed to the browser; that is acceptable here only because each user supplies their own key.
-- The production build ships a Content Security Policy whose `connect-src` allows only the app itself, `https://api.anthropic.com` and the anonymous visit counter `https://abacus.jasoncameron.dev` (see [Privacy & analytics](#privacy--analytics)). The counter code is separate from the BYOK code and never receives your key, prompts or any other data.
+| Provider | Key | Requests go only to |
+| --- | --- | --- |
+| Anthropic (Claude) | your Anthropic key | `https://api.anthropic.com` |
+| OpenAI (GPT) | your OpenAI key | `https://api.openai.com` |
+| Google Gemini | your Gemini API key | `https://generativelanguage.googleapis.com` |
+| OpenRouter (Llama, Mistral, DeepSeek, Qwen…) | your OpenRouter key | `https://openrouter.ai` |
+| Ollama (local models) | none | `http://localhost:11434` on your own computer |
 
-**Never commit API keys** (or `.env` files — they are git-ignored). Keys in a public repo are scraped within minutes and can run up charges. **Create a dedicated key with a spending limit** in the Anthropic Console for use with this app, and revoke it if you think it was exposed.
+- **One key slot per provider.** Each key is only ever sent to its own provider's API (a unit test checks that every
+  provider's requests go only to its documented host and carry only its own key). Gemini keys travel in the
+  `x-goog-api-key` header, never in the URL.
+- **Memory-only by default.** Keys disappear when the tab closes. You can opt in to **"Remember on this device"** per
+  provider, which stores that key in `localStorage` — anyone with access to that browser (or a malicious extension)
+  could read it. Keys are masked in the UI (only the last 4 characters are shown, e.g. `••••abcd`); **Forget key**
+  removes one key and **Forget all keys** removes them all. Your last provider and model are remembered; keys are not
+  (unless you opted in).
+- **Browser-direct access has risks.** Any key used from browser code is visible to that browser (dev tools,
+  extensions, anyone with access to the device). That is acceptable here only because each user supplies their own
+  key. Anthropic requires the `anthropic-dangerous-direct-browser-access: true` header for direct browser (CORS)
+  calls for exactly this reason.
+- **Create dedicated keys with spending limits** for use with this app — in the
+  [Anthropic Console](https://platform.claude.com/settings/keys), [OpenAI dashboard](https://platform.openai.com/api-keys),
+  [Google AI Studio](https://aistudio.google.com/apikey) or [OpenRouter](https://openrouter.ai/settings/keys) — and
+  revoke a key if you think it was exposed.
+- **Ollama** runs models locally and needs no key, but only works on the same computer as the browser. Ollama blocks
+  web pages by default; allow this site's origin when you start it:
+
+  ```bash
+  OLLAMA_ORIGINS=https://lance6x5.github.io ollama serve
+  ```
+
+  (On Windows/macOS set `OLLAMA_ORIGINS` as an environment variable for the Ollama app, then restart it.) Some
+  browsers may still block an HTTPS page from calling `http://localhost`.
+- **Content Security Policy.** The production build ships a CSP whose `connect-src` allows exactly: `'self'`,
+  `https://api.anthropic.com`, `https://api.openai.com`, `https://generativelanguage.googleapis.com`,
+  `https://openrouter.ai`, `http://localhost:11434`, `http://127.0.0.1:11434` and the anonymous visit counter
+  `https://abacus.jasoncameron.dev` (see [Privacy & analytics](#privacy--analytics)) — no wildcards. The counter code is
+  separate from the BYOK code and never receives your keys, prompts or any other data.
+- **Model lists don't go stale.** Each provider has a small list of suggested models (checked against the provider's
+  docs on 2026-11-27), a **Refresh models** button that asks the provider for the models your key can use, and a
+  free-text custom model id.
+
+**Never commit API keys** (or `.env` files — they are git-ignored). Keys in a public repo are scraped within minutes
+and can run up charges.
 
 ## Privacy & analytics
 
-Promptvault counts **one anonymous page load per browser session** using the open-source [Abacus](https://github.com/JasonLovesDoggo/abacus) counter. That is the only outside request besides the optional "Run with AI" calls you make yourself.
+Promptvault counts **one anonymous page load per browser session** using the open-source [Abacus](https://github.com/JasonLovesDoggo/abacus) counter. That is the only outside request besides the optional "Run with AI" calls you make yourself to the provider you choose.
 
-- No cookies, no personal data stored, and nothing from the app (prompts, settings, API key) is sent — just a plain request with no referrer.
+- No cookies, no personal data stored, and nothing from the app (prompts, settings, API keys) is sent — just a plain request with no referrer.
 - **Do Not Track** and **Global Privacy Control** are respected: with either enabled, your visit is not counted (the total is only read). Local development (`localhost`) is never counted.
 - Like any web request, it reveals your IP address to the counter service.
 - The count is approximate (it includes bots and is not unique visitors) and public — see the badge above.
@@ -118,11 +157,15 @@ src/
   App.jsx              app state, routing, shortcuts
   components/          React views (list, detail, editor, dialogs, settings…)
   lib/                 pure logic modules + unit tests
-    anthropic.js       BYOK Messages API client (fetch + SSE streaming)
+    providers/         BYOK AI providers (fetch + SSE/NDJSON streaming, no SDKs)
+      anthropic.js, openai.js, gemini.js, openrouter.js, ollama.js, common.js, index.js
+    csp.js             hosts allowed by the production CSP connect-src
     db.js              IndexedDB persistence
     feedback.js        GitHub issue URL builder
     visits.js          anonymous Abacus visit counter
-    keyStore.js        in-memory / opt-in localStorage key handling
+    keyStore.js        per-provider keys: in-memory / opt-in localStorage
+    seed.js            versioned example prompts + upgrade logic
+    seedLibrary.js     example prompt texts (imported CC0 + original)
     markdown.js        safe Markdown renderer
     prompt.js          prompt records, version history
     schema.js          export/import schema + duplicate handling
@@ -143,7 +186,7 @@ Promptvault is **source-available**, not OSI-approved open source. It is license
   [GitHub issue](https://github.com/lance6x5/prompt-library/issues) on this repo.
 - **Redistributing?** Keep [LICENSE.md](LICENSE.md) and its `Required Notice` line with every copy.
 
-Third-party dependencies keep their own licenses.
+Third-party dependencies keep their own licenses. The imported example prompts are public domain (CC0 1.0); see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Trademarks
 
