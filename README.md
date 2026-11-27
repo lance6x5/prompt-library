@@ -1,0 +1,117 @@
+<p align="center">
+  <img src="public/wordmark.svg" alt="Promptvault" width="360" />
+</p>
+
+# Promptvault
+
+**Your best prompts, kept and ready.**
+
+Promptvault is a local-first prompt library: save, organize, tag, search and reuse AI prompts right in your browser, then export them as JSON. It runs 100% client-side on GitHub Pages — no accounts, no server, no tracking — and works offline as an installable PWA.
+
+Live app: https://lance6x5.github.io/prompt-library/
+
+## Features
+
+- **Prompt records** — title, multi-line body, tags, category, target model, notes, favorite flag, created/updated timestamps and usage count.
+- **Template variables** — write `{{variable_name}}` in a prompt; "Use" opens a form to fill the values, previews the result and copies the completed prompt.
+- **Organization** — categories, tag management (create, rename, merge, delete), tag filters with AND/OR matching, Favorites and Recently used views.
+- **Search** — instant fuzzy full-text search (Fuse.js) across title, body, tags and notes.
+- **Keyboard shortcuts** — `/` focuses search, `n` creates a new prompt, `↑`/`↓` (or `j`/`k`) select, `Enter` copies the selected prompt.
+- **Editing** — Markdown-friendly editor with a preview toggle, version history (last 10 edits per prompt, restorable) and duplicate.
+- **Import / export** — export all or a filtered selection to JSON (documented schema version), import with duplicate detection (skip, overwrite or keep both), copy a single prompt as Markdown.
+- **Run with AI (optional)** — bring your own Anthropic API key and run a prompt directly from the browser with streamed output. See [Security](#security).
+- **Storage** — IndexedDB, seeded with 5 example prompts on first run. "Reset all data" with a confirmation step.
+- **Quality** — responsive (375px and up), light/dark mode via `prefers-color-scheme` (plus a manual override), keyboard accessible with visible focus states.
+
+## Local development
+
+Requires Node 22+.
+
+```bash
+npm install      # install dependencies
+npm run dev      # start the dev server (http://localhost:5173/prompt-library/)
+npm test         # run unit tests once (vitest run)
+npm run build    # production build to dist/
+npm run preview  # preview the production build
+```
+
+## Deploy (GitHub Pages)
+
+Deployment is automated by `.github/workflows/deploy.yml`, which installs, tests, builds and deploys on every push to `main` (and can be run manually via *workflow_dispatch*).
+
+One-time setup: **Repo Settings → Pages → Source: "GitHub Actions"**.
+
+The Vite `base` is `/prompt-library/`; change it in `vite.config.js` if you fork under a different repo name.
+
+## Export file format
+
+```jsonc
+{
+  "format": "promptvault.prompts",
+  "schemaVersion": 1,
+  "appVersion": "1.0.0",
+  "exportedAt": "2026-01-01T00:00:00.000Z",
+  "prompts": [
+    {
+      "id": "uuid", "title": "…", "body": "…", "tags": ["…"], "category": "…",
+      "model": "…", "notes": "…", "favorite": false,
+      "createdAt": 0, "updatedAt": 0, "usageCount": 0, "lastUsedAt": null,
+      "history": [{ "savedAt": 0, "title": "…", "body": "…", "tags": [], "category": "", "model": "", "notes": "" }]
+    }
+  ]
+}
+```
+
+Timestamps are epoch milliseconds. A bare array of prompt objects is also accepted on import. Duplicates are detected by matching `id` or identical title + body.
+
+## Security
+
+"Run with AI" uses a **bring-your-own-key (BYOK)** model:
+
+- You paste your own Anthropic API key in **Settings**. It is never part of this repository, never hard-coded, and is sent **only** to `https://api.anthropic.com`.
+- By default the key is kept **in memory only** and disappears when the tab closes. You can opt in to **"Remember on this device"**, which stores it in `localStorage` — anyone with access to that browser (or a malicious extension) could read it.
+- The key is masked in the UI (only the last 4 characters are shown, e.g. `••••abcd`), and **Forget key** removes it immediately.
+- Requests use the `anthropic-dangerous-direct-browser-access: true` header, which the API requires for direct browser (CORS) calls. It is "dangerous" because browser-side keys are exposed to the browser; that is acceptable here only because each user supplies their own key.
+- The production build ships a Content Security Policy whose `connect-src` allows only the app itself and `https://api.anthropic.com`.
+
+**Never commit API keys** (or `.env` files — they are git-ignored). Keys in a public repo are scraped within minutes and can run up charges. **Create a dedicated key with a spending limit** in the Anthropic Console for use with this app, and revoke it if you think it was exposed.
+
+## Feedback & issues
+
+Found a bug or have an idea? Use the **Feedback** menu in the app header, or go straight to GitHub:
+
+- [All issues](https://github.com/lance6x5/prompt-library/issues)
+- [Report a bug](https://github.com/lance6x5/prompt-library/issues/new?template=bug_report.yml)
+- [Request a feature](https://github.com/lance6x5/prompt-library/issues/new?template=feature_request.yml)
+
+The in-app links open a pre-filled GitHub issue form (app version and, for bugs, your browser string) — a free GitHub account is required, and no prompt data is ever included. See [CONTRIBUTING.md](CONTRIBUTING.md) for the triage flow.
+
+## Versioning
+
+Promptvault follows [Semantic Versioning](https://semver.org/). The current version is shown in the app footer and About page.
+
+- **MAJOR** — breaking data/schema change (e.g. a new export `schemaVersion` that older versions can't read).
+- **MINOR** — new features, backwards compatible.
+- **PATCH** — bug fixes.
+
+Changes are recorded in [CHANGELOG.md](CHANGELOG.md).
+
+## Project structure
+
+```
+src/
+  App.jsx              app state, routing, shortcuts
+  components/          React views (list, detail, editor, dialogs, settings…)
+  lib/                 pure logic modules + unit tests
+    anthropic.js       BYOK Messages API client (fetch + SSE streaming)
+    db.js              IndexedDB persistence
+    feedback.js        GitHub issue URL builder
+    keyStore.js        in-memory / opt-in localStorage key handling
+    markdown.js        safe Markdown renderer
+    prompt.js          prompt records, version history
+    schema.js          export/import schema + duplicate handling
+    search.js          Fuse.js fuzzy search
+    tags.js, filter.js tag operations and view filters
+    template.js        {{variable}} parsing and filling
+public/                logo, favicon and PWA icons (SVG)
+```

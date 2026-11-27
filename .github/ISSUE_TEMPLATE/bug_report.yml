@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in Promptvault isn't working as expected.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please don't include personal data or API keys. Your prompts never leave your browser, so describe them in general terms if needed.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in the app footer (e.g. 1.0.0).
+  - type: input
+    id: environment
+    attributes:
+      label: Browser / OS
+  - type: textarea
+    id: notes
+    attributes:
+      label: Screenshots / notes
