@@ -6,7 +6,9 @@
 
 **Your best prompts, kept and ready.**
 
-Promptvault is a local-first prompt library: save, organize, tag, search and reuse AI prompts right in your browser, then export them as JSON. It runs 100% client-side on GitHub Pages — no accounts, no server, no tracking — and works offline as an installable PWA.
+![Visits](https://abacus.jasoncameron.dev/get/lance6x5.github.io/prompt-library/shield)
+
+Promptvault is a local-first prompt library: save, organize, tag, search and reuse AI prompts right in your browser, then export them as JSON. It runs 100% client-side on GitHub Pages — no accounts, no server, your prompts stay in your browser (the only outside request is an anonymous visit count, plus optional AI runs with your own key) — and works offline as an installable PWA.
 
 Live app: https://lance6x5.github.io/prompt-library/
 
@@ -72,9 +74,18 @@ Timestamps are epoch milliseconds. A bare array of prompt objects is also accept
 - By default the key is kept **in memory only** and disappears when the tab closes. You can opt in to **"Remember on this device"**, which stores it in `localStorage` — anyone with access to that browser (or a malicious extension) could read it.
 - The key is masked in the UI (only the last 4 characters are shown, e.g. `••••abcd`), and **Forget key** removes it immediately.
 - Requests use the `anthropic-dangerous-direct-browser-access: true` header, which the API requires for direct browser (CORS) calls. It is "dangerous" because browser-side keys are exposed to the browser; that is acceptable here only because each user supplies their own key.
-- The production build ships a Content Security Policy whose `connect-src` allows only the app itself and `https://api.anthropic.com`.
+- The production build ships a Content Security Policy whose `connect-src` allows only the app itself, `https://api.anthropic.com` and the anonymous visit counter `https://abacus.jasoncameron.dev` (see [Privacy & analytics](#privacy--analytics)). The counter code is separate from the BYOK code and never receives your key, prompts or any other data.
 
 **Never commit API keys** (or `.env` files — they are git-ignored). Keys in a public repo are scraped within minutes and can run up charges. **Create a dedicated key with a spending limit** in the Anthropic Console for use with this app, and revoke it if you think it was exposed.
+
+## Privacy & analytics
+
+Promptvault counts **one anonymous page load per browser session** using the open-source [Abacus](https://github.com/JasonLovesDoggo/abacus) counter. That is the only outside request besides the optional "Run with AI" calls you make yourself.
+
+- No cookies, no personal data stored, and nothing from the app (prompts, settings, API key) is sent — just a plain request with no referrer.
+- **Do Not Track** and **Global Privacy Control** are respected: with either enabled, your visit is not counted (the total is only read). Local development (`localhost`) is never counted.
+- Like any web request, it reveals your IP address to the counter service.
+- The count is approximate (it includes bots and is not unique visitors) and public — see the badge above.
 
 ## Feedback & issues
 
@@ -106,6 +117,7 @@ src/
     anthropic.js       BYOK Messages API client (fetch + SSE streaming)
     db.js              IndexedDB persistence
     feedback.js        GitHub issue URL builder
+    visits.js          anonymous Abacus visit counter
     keyStore.js        in-memory / opt-in localStorage key handling
     markdown.js        safe Markdown renderer
     prompt.js          prompt records, version history

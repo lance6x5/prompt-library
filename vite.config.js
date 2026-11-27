@@ -7,14 +7,15 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 
 // Content Security Policy, injected only into the production build (the Vite dev
 // server relies on inline scripts for HMR, which this policy would block).
-// connect-src allows the Anthropic API for the optional "Run with AI" feature.
+// connect-src allows the Anthropic API for the optional "Run with AI" feature
+// and the Abacus counter for the anonymous visit count (src/lib/visits.js).
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self'",
-  "connect-src 'self' https://api.anthropic.com",
+  "connect-src 'self' https://api.anthropic.com https://abacus.jasoncameron.dev",
   "manifest-src 'self'",
   "worker-src 'self'",
   "object-src 'none'",
@@ -64,6 +65,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,webmanifest}'],
         navigateFallback: 'index.html',
+        // No runtimeCaching: cross-origin requests (Anthropic API, Abacus visit
+        // counter) are never cached or intercepted by the service worker.
       },
     }),
   ],

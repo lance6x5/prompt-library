@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-27
+
+### Added
+
+- Anonymous visit counter in the footer (e.g. "12,345 visits") via the open-source [Abacus](https://github.com/JasonLovesDoggo/abacus) service: one count per browser session, read-only with Do Not Track / Global Privacy Control and on localhost, no cookies, no referrer and no app data sent; fails silently. Visits badge and "Privacy & analytics" section in the README.
+
+### Changed
+
+- Production Content Security Policy `connect-src` now also allows `https://abacus.jasoncameron.dev`.
+- About page privacy text and README updated to mention the anonymous visit count.
+
 ## [1.0.0] - 2026-11-27
 
 ### Added
@@ -22,5 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Production Content Security Policy limiting network access to the app and `api.anthropic.com`.
 - GitHub Actions workflow that tests, builds and deploys to GitHub Pages.
 
-[Unreleased]: https://github.com/lance6x5/prompt-library/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/lance6x5/prompt-library/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/lance6x5/prompt-library/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/lance6x5/prompt-library/releases/tag/v1.0.0

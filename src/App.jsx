@@ -9,6 +9,7 @@ import { applyEdit, createPrompt, duplicatePrompt, markUsed, restoreVersion } fr
 import { extractVariables } from './lib/template.js';
 import { changedPrompts } from './lib/tags.js';
 import { copyText, isEditable } from './lib/browser.js';
+import { getVisitCount, formatVisits } from './lib/visits.js';
 import { navigate } from './lib/router.js';
 import { useRoute, useTheme } from './hooks.js';
 import Header from './components/Header.jsx';
@@ -39,6 +40,7 @@ export default function App() {
   const [confirmState, setConfirmState] = useState(null);
   const [toast, setToast] = useState('');
   const [navOpen, setNavOpen] = useState(false);
+  const [visits, setVisits] = useState(null);
   const [keyStore] = useState(() => createKeyStore());
   const [, setKeyVersion] = useState(0);
   const searchRef = useRef(null);
@@ -66,6 +68,17 @@ export default function App() {
         setLoaded(true);
       }
     })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // ---- Anonymous visit count (independent of prompts/settings/API key) ----
+  useEffect(() => {
+    let alive = true;
+    getVisitCount().then((n) => {
+      if (alive && n !== null) setVisits(n);
+    });
     return () => {
       alive = false;
     };
@@ -446,6 +459,14 @@ export default function App() {
         <a href="#/about">About &amp; shortcuts</a>
         <span aria-hidden="true">·</span>
         <span>Your data stays in this browser.</span>
+        <span className="visit-count" aria-live="polite" hidden={visits === null}>
+          {visits !== null && (
+            <>
+              <span aria-hidden="true">· </span>
+              {formatVisits(visits)} {visits === 1 ? 'visit' : 'visits'}
+            </>
+          )}
+        </span>
       </footer>
 
       {useTarget && (
