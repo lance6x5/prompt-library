@@ -1,7 +1,9 @@
 {
   "name": "prompt-library",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "author": "Silverlight DevTech",
   "description": "Promptvault - a local-first library for saving, organizing and reusing AI prompts.",
   "type": "module",
   "scripts": {

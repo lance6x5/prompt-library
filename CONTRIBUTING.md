@@ -24,3 +24,9 @@ npm run build
 ```
 
 Keep logic in small, tested modules under `src/lib/`, and make sure `npm test` and `npm run build` pass before opening a PR. Never commit secrets or `.env` files.
+
+## Licensing of contributions
+
+Promptvault is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE.md). By submitting a pull request,
+you agree that your contribution is licensed to Silverlight DevTech under the same terms, and that Silverlight
+DevTech may also offer it under its commercial licenses.
